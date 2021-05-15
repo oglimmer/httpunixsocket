@@ -1,10 +1,5 @@
 package de.oglimmer.unixsocket;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.concurrent.TimeUnit;
-
 import jnr.unixsocket.UnixSocket;
 import jnr.unixsocket.UnixSocketAddress;
 import jnr.unixsocket.UnixSocketChannel;
@@ -16,10 +11,7 @@ import org.apache.http.annotation.ThreadingBehavior;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.Configurable;
-import org.apache.http.client.methods.HttpExecutionAware;
-import org.apache.http.client.methods.HttpRequestWrapper;
+import org.apache.http.client.methods.*;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.conn.ClientConnectionRequest;
@@ -40,13 +32,17 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpRequestExecutor;
 import org.apache.http.util.Args;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Taken and slightly modified from
  * @See org.apache.http.impl.client.MinimalHttpClient
  */
 @Contract(threading = ThreadingBehavior.SAFE_CONDITIONAL)
-class HttpClientUnix extends CloseableHttpClient {
-
+public final class HttpClientUnix extends CloseableHttpClient {
     private final HttpClientConnectionManager connManager;
     private final MinimalClientExec requestExecutor;
     private final HttpParams params;
@@ -57,7 +53,7 @@ class HttpClientUnix extends CloseableHttpClient {
         this.connManager = new BasicHttpClientConnectionManager((String name) -> new ConnectionSocketFactory() {
             @Override
             public Socket createSocket(HttpContext context) throws IOException {
-                UnixSocketAddress usa = new UnixSocketAddress((String) context.getAttribute("unixsocket"));
+                UnixSocketAddress usa = new UnixSocketAddress((String) context.getAttribute("unix"));
                 return new UnixSocket(UnixSocketChannel.open(usa));
             }
 
@@ -81,8 +77,29 @@ class HttpClientUnix extends CloseableHttpClient {
     public <T> T execute(HttpGetUnix httpget, ResponseHandler<? extends T> responseHandler) throws IOException {
         final HttpHost target = new HttpHost("localhost");
         final HttpContext context = new BasicHttpContext();
-        context.setAttribute("unixsocket", httpget.getFilename());
+        context.setAttribute("unix", httpget.getFilename());
         return super.execute(target, httpget, responseHandler, context);
+    }
+
+    public CloseableHttpResponse execute(HttpGetUnix httpget) throws IOException {
+        final HttpHost target = new HttpHost("localhost");
+        final HttpContext context = new BasicHttpContext();
+        context.setAttribute("unix", httpget.getFilename());
+        return super.execute(target, httpget, context);
+    }
+
+    public <T> T execute(HttpPostUnix httppost, ResponseHandler<? extends T> responseHandler) throws IOException {
+        final HttpHost target = new HttpHost("localhost");
+        final HttpContext context = new BasicHttpContext();
+        context.setAttribute("unix", httppost.getFilename());
+        return super.execute(target, httppost, responseHandler, context);
+    }
+
+    public CloseableHttpResponse execute(HttpPostUnix httppost) throws IOException {
+        final HttpHost target = new HttpHost("localhost");
+        final HttpContext context = new BasicHttpContext();
+        context.setAttribute("unix", httppost.getFilename());
+        return super.execute(target, httppost, context);
     }
 
     @Override
